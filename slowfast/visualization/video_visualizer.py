@@ -10,6 +10,7 @@ from detectron2.utils.visualizer import Visualizer
 
 import slowfast.utils.logging as logging
 from slowfast.utils.misc import get_class_names
+from slowfast.utils.hungarian_tracker import HungarianTracker
 
 logger = logging.get_logger(__name__)
 log.getLogger("matplotlib").setLevel(log.ERROR)
@@ -392,6 +393,7 @@ class VideoVisualizer:
             self._get_thres_array(common_class_names=common_class_names)
 
         self.color_map = plt.get_cmap(colormap)
+        self.tracker = HungarianTracker()
 
     def _get_color(self, class_id):
         """
@@ -409,25 +411,27 @@ class VideoVisualizer:
         alpha=0.5,
         text_alpha=0.7,
         ground_truth=False,
+        box_ids=None,
     ):
         """
-        Draw labels and bouding boxes for one image. By default, predicted labels are drawn in
-        the top left corner of the image or corresponding bounding boxes. For ground truth labels
-        (setting True for ground_truth flag), labels will be drawn in the bottom left corner.
-        Args:
-            frame (array-like): a tensor or numpy array of shape (H, W, C), where H and W correspond to
-                the height and width of the image respectively. C is the number of
-                color channels. The image is required to be in RGB format since that
-                is a requirement of the Matplotlib library. The image is also expected
-                to be in the range [0, 255].
-            preds (tensor or list): If ground_truth is False, provide a float tensor of shape (num_boxes, num_classes)
-                that contains all of the confidence scores of the model.
-                For recognition task, input shape can be (num_classes,). To plot true label (ground_truth is True),
-                preds is a list contains int32 of the shape (num_boxes, true_class_ids) or (true_class_ids,).
-            bboxes (Optional[tensor]): shape (num_boxes, 4) that contains the coordinates of the bounding boxes.
-            alpha (Optional[float]): transparency level of the bounding boxes.
-            text_alpha (Optional[float]): transparency level of the box wrapped around text labels.
-            ground_truth (bool): whether the prodived bounding boxes are ground-truth.
+            Draw labels and bouding boxes for one image. By default, predicted labels are drawn in
+            the top left corner of the image or corresponding bounding boxes. For ground truth labels
+            (setting True for ground_truth flag), labels will be drawn in the bottom left corner.
+            Args:
+                frame (array-like): a tensor or numpy array of shape (H, W, C), where H and W correspond to
+                    the height and width of the image respectively. C is the number of
+                    color channels. The image is required to be in RGB format since that
+                    is a requirement of the Matplotlib library. The image is also expected
+                    to be in the range [0, 255].
+                preds (tensor or list): If ground_truth is False, provide a float tensor of shape (num_boxes, num_classes)
+                    that contains all of the confidence scores of the model.
+                    For recognition task, input shape can be (num_classes,). To plot true label (ground_truth is True),
+                    preds is a list contains int32 of the shape (num_boxes, true_class_ids) or (true_class_ids,).
+                bboxes (Optional[tensor]): shape (num_boxes, 4) that contains the coordinates of the bounding boxes.
+                alpha (Optional[float]): transparency level of the bounding boxes.
+                text_alpha (Optional[float]): transparency level of the box wrapped around text labels.
+                ground_truth (bool): whether the prodived bounding boxes are ground-truth.
+                box_ids (Optional[int]): ids for the bounding boxes
         """
         if isinstance(preds, torch.Tensor):
             if preds.ndim == 1:
@@ -477,6 +481,7 @@ class VideoVisualizer:
             )
             for i, box in enumerate(bboxes):
                 text = text_labels[i]
+                box_id = box_ids[i]
                 pred_class = top_classes[i]
                 colors = [self._get_color(pred) for pred in pred_class]
 
@@ -487,6 +492,13 @@ class VideoVisualizer:
                     alpha=alpha,
                     edge_color=box_color,
                     line_style=line_style,
+                )
+                frame_visualizer.draw_multiple_text(
+                    [f"id: {box_id}"],
+                    box,
+                    top_corner=False,
+                    font_size=font_size,
+                    alpha=text_alpha,
                 )
                 frame_visualizer.draw_multiple_text(
                     text,
@@ -616,6 +628,11 @@ class VideoVisualizer:
         text_alpha = text_alpha
         frames = frames[repeated_seq]
         img_ls = []
+
+        if bboxes is not None:
+            box_ids = self.tracker.advance(bboxes)
+        else:
+            box_ids = None
         for alpha, frame in zip(alpha_ls, frames):
             draw_img = self.draw_one_frame(
                 frame,
@@ -624,6 +641,7 @@ class VideoVisualizer:
                 alpha=alpha,
                 text_alpha=text_alpha,
                 ground_truth=ground_truth,
+                box_ids=box_ids,
             )
             if adjusted:
                 draw_img = draw_img.astype("float32") / 255
