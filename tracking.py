@@ -6,6 +6,7 @@ import json
 import numpy as np
 from tqdm import tqdm
 from scipy.optimize import linear_sum_assignment
+from scipy.spatial import distance
 
 from slowfast.utils.parser import load_config, parse_args
 
@@ -20,7 +21,7 @@ def reduce_tasks(tasks):
     return reduced_tasks
 
 
-def IoU(bb1, bb2):
+def metrics(bb1, bb2):
     def to_tuple(bb):
         w = bb['bottom_right_x'] - bb['top_left_x']
         h = bb['bottom_right_y'] - bb['top_left_y']
@@ -47,7 +48,20 @@ def IoU(bb1, bb2):
     union_area = area1 + area2 - overlap_area
     iou = overlap_area / union_area
 
-    return iou
+    #height difference
+    hdiff = abs(h1-h2)
+    #width difference
+    wdiff = abs(w1-w2)
+
+    #center coordinates for box1
+    cx1, cy1 = j1 + w1/2, i1 + h1/2 
+    #center coordinates for box2
+    cx2, cy2 = j2 + w2/2, i2 + h2/2 
+
+    #euclidean distance between the 2 box centers 
+    cd = distance.euclidean((cx1, cy1), (cx2, cy2)) 
+
+    return iou, hdiff, wdiff, cd
 
 
 class HungarianTracker():
@@ -66,8 +80,9 @@ class HungarianTracker():
             dtype=np.float32)
         for i, bounding_box in enumerate(new_bounding_boxes):
             for j, tracked_bounding_box in enumerate(self.tracking):
-                new_matrix[j, i] = IoU(bounding_box,
+                iou, hdiff, wdiff, cd = metrics(bounding_box,
                                        tracked_bounding_box)
+                new_matrix[j, i] = iou
 
         matched_idx = linear_sum_assignment(new_matrix, maximize=True)
         print(">> matched_idx = ", matched_idx)
