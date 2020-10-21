@@ -10,7 +10,6 @@ import torch.multiprocessing as mp
 import slowfast.utils.logging as logging
 from slowfast.datasets import cv2_transform
 from slowfast.visualization.predictor import Predictor
-from slowfast.utils.parser import load_config, parse_args
 
 logger = logging.get_logger(__name__)
 
@@ -283,10 +282,7 @@ def draw_predictions(task, video_vis):
             All attributes must lie on CPU devices.
         video_vis (VideoVisualizer object): the video visualizer object.
     """
-    args = parse_args()
-    cfg = load_config(args)
-    scores_path = cfg.DEMO.SCORES_FILE_PATH
-    
+
     boxes = task.bboxes
     frames = task.frames
     preds = task.action_preds
@@ -308,9 +304,6 @@ def draw_predictions(task, video_vis):
     frames = frames[task.num_buffer_frames :]
     if boxes is not None:
         if len(boxes) != 0:
-            with open(scores_path, 'a+') as f:
-              for box, pred in zip(boxes, preds):
-                f.write(f'{task.id}, {str(box.tolist()).strip("[]")}, {str(pred.tolist()).strip("[]")}\n')
             frames = video_vis.draw_clip_range(
                 frames,
                 preds,

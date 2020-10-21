@@ -39,18 +39,18 @@ predictions = []
 file = np.genfromtxt(scores_path,delimiter=',')
 
 for line in file:
-    prediction_scores = {class_name:score for class_name, score in zip(class_names, line[5:])}
+    prediction_scores = {class_name:score for class_name, score in zip(class_names, line[6:])}
     prediction_scores = dict( sorted(prediction_scores.items(),
                            key=lambda item: item[1],
                            reverse=True))
     prediction_scores = get_best_predictions(prediction_scores)                           
     
-    box_coords = {'top_left_x':line[1],
-                  'top_left_y':line[2],
-                  'bottom_right_x':line[3],
-                  'bottom_right_y':line[4]}
-
+    box_coords = {'top_left_x':line[2],
+                  'top_left_y':line[3],
+                  'bottom_right_x':line[4],
+                  'bottom_right_y':line[5]}
     predictions.append({'task_id':int(line[0]),
+                        'box_id': int(line[1]), 
                         'box':box_coords,
                         'predictions':prediction_scores})
 

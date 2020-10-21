@@ -11,6 +11,7 @@ from detectron2.utils.visualizer import Visualizer
 import slowfast.utils.logging as logging
 from slowfast.utils.misc import get_class_names
 from slowfast.utils.hungarian_tracker import HungarianTracker
+from slowfast.utils.parser import load_config, parse_args
 
 logger = logging.get_logger(__name__)
 log.getLogger("matplotlib").setLevel(log.ERROR)
@@ -601,6 +602,10 @@ class VideoVisualizer:
             keyframe_idx (int): the index of keyframe in the clip.
             repeat_frame (int): repeat each frame in draw_range for `repeat_frame` time for slow-motion effect.
         """
+        args = parse_args()
+        cfg = load_config(args)
+        scores_path = cfg.DEMO.SCORES_FILE_PATH
+
         assert repeat_frame >= 1, "`repeat_frame` must be a positive integer."
 
         repeated_seq = range(0, len(frames))
@@ -631,6 +636,9 @@ class VideoVisualizer:
 
         if bboxes is not None:
             box_ids = self.tracker.advance(bboxes)
+            with open(scores_path, 'a+') as f:
+              for bbox, pred, box_id in zip(bboxes, preds, box_ids):
+                f.write(f'{self.tracker.current_task_id},{box_id},{str(bbox.tolist()).strip("[]")},{str(pred.tolist()).strip("[]")}\n')
         else:
             box_ids = None
         for alpha, frame in zip(alpha_ls, frames):
