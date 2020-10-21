@@ -86,7 +86,7 @@ class HungarianTracker():
             for j, tracked_bounding_box in enumerate(self.tracking):
                 iou, hdiff, wdiff, cd = metrics(bounding_box,
                                                 tracked_bounding_box)
-                new_matrix[j, i] = iou
+                new_matrix[j, i] = iou if iou !=0 else -cd/1000
 
         row_idx, col_idx = linear_sum_assignment(new_matrix, maximize=True)
         # print(f">> task {self.current_task_id} row_idx = ", row_idx)
