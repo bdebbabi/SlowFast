@@ -10,7 +10,7 @@ from detectron2.utils.visualizer import Visualizer
 
 import slowfast.utils.logging as logging
 from slowfast.utils.misc import get_class_names
-from slowfast.utils.hungarian_tracker import HungarianTracker
+from slowfast.utils.tracker import DeepSortTracker
 from slowfast.utils.parser import load_config, parse_args
 
 logger = logging.get_logger(__name__)
@@ -151,9 +151,9 @@ class ImgVisualizer(Visualizer):
             )
             y_corner = 1
         else:
-            num_text_split = len(text_ls) - self._align_y_bottom(
+            num_text_split = int(len(text_ls) - self._align_y_bottom(
                 box_coordinate, len(text_ls), text_box_width
-            )
+            ))
             y_corner = 3
 
         text_color_sorted = sorted(
@@ -394,7 +394,7 @@ class VideoVisualizer:
             self._get_thres_array(common_class_names=common_class_names)
 
         self.color_map = plt.get_cmap(colormap)
-        self.tracker = HungarianTracker()
+        self.tracker = DeepSortTracker()
 
     def _get_color(self, class_id):
         """
@@ -648,7 +648,7 @@ class VideoVisualizer:
             mid_frame = frames[half_left]
         if bboxes is not None:
             if nbboxes is None:
-                box_ids = self.tracker.advance(bboxes, mid_frame)
+                box_ids, = self.tracker.advance(bboxes, mid_frame)
                 with open(scores_path, 'a+') as f:
                     for bbox, pred, box_id in zip(bboxes, preds, box_ids):
                         f.write(f'{self.tracker.current_task_id},{box_id},{str(bbox.tolist()).strip("[]")},{str(pred.tolist()).strip("[]")}\n')
@@ -656,8 +656,7 @@ class VideoVisualizer:
             box_ids = None
         for i, (alpha, frame) in enumerate(zip(alpha_ls, frames)):
             if nbboxes is not None:
-                frame_boxes = nbboxes[i]
-                box_ids = self.tracker.advance(frame_boxes, frame)
+                box_ids, frame_boxes = self.tracker.advance(nbboxes[i], frame)
                 frame = self.draw_one_frame(
                     frame,
                     preds=None,
