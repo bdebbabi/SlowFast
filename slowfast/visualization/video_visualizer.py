@@ -647,14 +647,25 @@ class VideoVisualizer:
         else:
             mid_frame = frames[half_left]
         if bboxes is not None:
-            # TODO: Pass nbboxes if they exists
-            box_ids = self.tracker.advance(bboxes, mid_frame)
-            with open(scores_path, 'a+') as f:
-              for bbox, pred, box_id in zip(bboxes, preds, box_ids):
-                f.write(f'{self.tracker.current_task_id},{box_id},{str(bbox.tolist()).strip("[]")},{str(pred.tolist()).strip("[]")}\n')
+            if nbboxes is None:
+                box_ids = self.tracker.advance(bboxes, mid_frame)
+                with open(scores_path, 'a+') as f:
+                    for bbox, pred, box_id in zip(bboxes, preds, box_ids):
+                        f.write(f'{self.tracker.current_task_id},{box_id},{str(bbox.tolist()).strip("[]")},{str(pred.tolist()).strip("[]")}\n')
         else:
             box_ids = None
         for i, (alpha, frame) in enumerate(zip(alpha_ls, frames)):
+            if nbboxes is not None:
+                frame_boxes = nbboxes[i]
+                box_ids = self.tracker.advance(frame_boxes, frame)
+                frame = self.draw_one_frame(
+                    frame,
+                    preds=None,
+                    bboxes=frame_boxes,
+                    box_ids=box_ids,
+                    alpha=1,
+                    text_alpha=text_alpha,
+                )
             draw_img = self.draw_one_frame(
                 frame,
                 preds,
@@ -662,16 +673,8 @@ class VideoVisualizer:
                 alpha=alpha,
                 text_alpha=text_alpha,
                 ground_truth=ground_truth,
-                box_ids=box_ids,
+                # box_ids=box_ids,
             )
-            if nbboxes is not None:
-                draw_img = self.draw_one_frame(
-                    draw_img,
-                    preds=None,
-                    bboxes=nbboxes[i],
-                    alpha=1,
-                    text_alpha=text_alpha,
-                )
             if adjusted:
                 draw_img = draw_img.astype("float32") / 255
 
